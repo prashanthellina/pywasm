@@ -103,4 +103,10 @@ venv.bak/
 # mypy
 .mypy_cache/
 
-/*.test.py
+# OS X
+*.DS_Store
+
+# databases
+*.db
+
+*.swp

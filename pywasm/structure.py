@@ -18,11 +18,11 @@ class FunctionType:
     def __repr__(self):
         args = [convention.valtype[i][0] for i in self.args]
         rets = [convention.valtype[i][0] for i in self.rets]
-        a = ', '.join(args)
+        a = ", ".join(args)
         if rets:
             b = rets[0]
-            return f'({a}) -> {b}'
-        return f'({a})'
+            return f"({a}) -> {b}"
+        return f"({a})"
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
@@ -52,8 +52,8 @@ class Limits:
 
     def __repr__(self):
         if self.maximum:
-            return f'minimum={self.minimum} maximum={self.maximum}'
-        return f'minimum={self.minimum}'
+            return f"minimum={self.minimum} maximum={self.maximum}"
+        return f"minimum={self.minimum}"
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
@@ -91,7 +91,7 @@ class TableType:
 
     def __repr__(self):
         a = convention.elemtype[self.elemtype][0]
-        return f'{a} {self.limits}'
+        return f"{a} {self.limits}"
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
@@ -115,8 +115,8 @@ class GlobalType:
     def __repr__(self):
         a = convention.valtype[self.valtype][0]
         if self.mut:
-            return f'var {a}'
-        return f'const {a}'
+            return f"var {a}"
+        return f"const {a}"
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
@@ -143,8 +143,8 @@ class Instruction:
 
     def __repr__(self):
         if self.immediate_arguments is None:
-            return f'{convention.opcodes[self.code][0]}'
-        return f'{convention.opcodes[self.code][0]} {self.immediate_arguments}'
+            return f"{convention.opcodes[self.code][0]}"
+        return f"{convention.opcodes[self.code][0]} {self.immediate_arguments}"
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
@@ -153,23 +153,23 @@ class Instruction:
             return None
         code = ord(code_byte)
         code_size = convention.opcodes[code][1]
-        if code_size == '':
+        if code_size == "":
             immediate_arguments = None
-        elif code_size == 'u8':
+        elif code_size == "u8":
             immediate_arguments = common.read_count(r, 8)
-        elif code_size == 'u32':
+        elif code_size == "u32":
             immediate_arguments = common.read_count(r, 32)
-        elif code_size == 'i32':
+        elif code_size == "i32":
             immediate_arguments = num.int2i32(common.read_count(r, 32, signed=True))
-        elif code_size == 'i64':
+        elif code_size == "i64":
             immediate_arguments = num.int2i64(common.read_count(r, 64, signed=True))
-        elif code_size == 'f32':
+        elif code_size == "f32":
             immediate_arguments = num.LittleEndian.f32(r.read(4))
-        elif code_size == 'f64':
+        elif code_size == "f64":
             immediate_arguments = num.LittleEndian.f64(r.read(8))
-        elif code_size == 'u32,u8':
+        elif code_size == "u32,u8":
             immediate_arguments = [common.read_count(r, 32), common.read_count(r, 8)]
-        elif code_size == 'u32,u32':
+        elif code_size == "u32,u32":
             immediate_arguments = [common.read_count(r, 32) for _ in range(2)]
         elif code == convention.br_table:
             n = common.read_count(r, 32)
@@ -177,7 +177,7 @@ class Instruction:
             b = common.read_count(r, 32)
             immediate_arguments = [a, b]
         else:
-            raise Exception('pywasm: invalid code size')
+            raise Exception("pywasm: invalid code size")
         return Instruction(code, immediate_arguments)
 
 
@@ -215,9 +215,9 @@ class Expression:
                 composition[block[0]] = block
                 continue
         if data[-1].code != convention.end:
-            raise Exception('pywasm: function block did not end with 0xb')
+            raise Exception("pywasm: function block did not end with 0xb")
         if stack:
-            raise Exception('pywasm: function ended in middle of block')
+            raise Exception("pywasm: function ended in middle of block")
         return composition
 
     @classmethod
@@ -321,7 +321,9 @@ class Table:
         self.tabletype: TableType
 
     def __repr__(self):
-        return f'{convention.elemtype[self.tabletype.elemtype][0]} {self.tabletype.limits}'
+        return (
+            f"{convention.elemtype[self.tabletype.elemtype][0]} {self.tabletype.limits}"
+        )
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
@@ -339,7 +341,7 @@ class Memory:
         self.memtype: MemoryType
 
     def __repr__(self):
-        return f'{self.memtype}'
+        return f"{self.memtype}"
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
@@ -357,7 +359,7 @@ class Global:
         self.expr: Expression
 
     def __repr__(self):
-        return f'{self.globaltype} expr={self.expr}>'
+        return f"{self.globaltype} expr={self.expr}>"
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
@@ -422,7 +424,7 @@ class StartFunction:
         self.funcidx: int
 
     def __repr__(self):
-        return f'Function[{self.funcidx}]'
+        return f"Function[{self.funcidx}]"
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
@@ -447,14 +449,14 @@ class Export:
 
     def __repr__(self):
         if self.kind == convention.extern_func:
-            return f'{self.name} -> Function[{self.desc}]'
+            return f"{self.name} -> Function[{self.desc}]"
         if self.kind == convention.extern_table:
-            return f'{self.name} -> Table[{self.desc}]'
+            return f"{self.name} -> Table[{self.desc}]"
         if self.kind == convention.extern_mem:
-            return f'{self.name} -> Memory[{self.desc}]'
+            return f"{self.name} -> Memory[{self.desc}]"
         if self.kind == convention.extern_global:
-            return f'{self.name} -> Global[{self.desc}]'
-        return f'{self.name}'
+            return f"{self.name} -> Global[{self.desc}]"
+        return f"{self.name}"
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
@@ -484,14 +486,14 @@ class Import:
 
     def __repr__(self):
         if self.kind == convention.extern_func:
-            return f'{self.module}.{self.name} -> Function[{self.desc}]'
+            return f"{self.module}.{self.name} -> Function[{self.desc}]"
         if self.kind == convention.extern_table:
-            return f'{self.module}.{self.name} -> Table[{self.desc}]'
+            return f"{self.module}.{self.name} -> Table[{self.desc}]"
         if self.kind == convention.extern_mem:
-            return f'{self.module}.{self.name} -> Memory[{self.desc}]'
+            return f"{self.module}.{self.name} -> Memory[{self.desc}]"
         if self.kind == convention.extern_global:
-            return f'{self.module}.{self.name} -> Global[{self.desc}]'
-        return f'{self.module}.{self.name}'
+            return f"{self.module}.{self.name} -> Global[{self.desc}]"
+        return f"{self.module}.{self.name}"
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
@@ -508,7 +510,7 @@ class Import:
         elif o.kind == convention.extern_global:
             o.desc = GlobalType.from_reader(r)
         else:
-            raise Exception('pywasm: malformed')
+            raise Exception("pywasm: malformed")
         return o
 
 
@@ -523,6 +525,11 @@ class CustomSection:
     def __init__(self):
         self.name: str = None
         self.data: bytearray = None
+
+    def to_writer(self, w: typing.BinaryIO):
+        w.write("\x00")
+        # TODO
+        pass
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
@@ -749,18 +756,25 @@ class Module:
         self.exports: typing.List[Export] = []
 
     @classmethod
-    def load(cls, name: str) -> 'Module':
-        with open(name, 'rb') as f:
+    def load(cls, name: str) -> "Module":
+        with open(name, "rb") as f:
             return cls.from_reader(f)
 
+    def to_writer(self, w: typing.BinaryIO):
+        # Write Magic
+        w.write(bytes([0x00, 0x61, 0x73, 0x6D]))
+
+        # Write version
+        w.write(bytes([0x01, 0x00, 0x00, 0x00]))
+
     @classmethod
-    def from_reader(cls, r: typing.BinaryIO) -> 'Module':
-        if list(r.read(4)) != [0x00, 0x61, 0x73, 0x6d]:
-            raise Exception('pywasm: invalid magic number')
+    def from_reader(cls, r: typing.BinaryIO) -> "Module":
+        if list(r.read(4)) != [0x00, 0x61, 0x73, 0x6D]:
+            raise Exception("pywasm: invalid magic number")
         if list(r.read(4)) != [0x01, 0x00, 0x00, 0x00]:
-            raise Exception('pywasm: invalid version')
+            raise Exception("pywasm: invalid version")
         mod = Module()
-        log.debugln('Sections:')
+        log.debugln("Sections:")
         log.debugln()
         while True:
             section_id_byte = r.read(1)
@@ -770,53 +784,64 @@ class Module:
             n = common.read_count(r, 32)
             data = r.read(n)
             if len(data) != n:
-                raise Exception('pywasm: invalid section size')
+                raise Exception("pywasm: invalid section size")
             if section_id == convention.custom_section:
                 custom_section = CustomSection.from_reader(io.BytesIO(data))
-                log.debugln(f'{convention.section[section_id][0]:>9} {custom_section.name}')
+                log.debugln(
+                    f"{convention.section[section_id][0]:>9} {custom_section.name}"
+                )
             elif section_id == convention.type_section:
                 type_section = TypeSection.from_reader(io.BytesIO(data))
                 for i, e in enumerate(type_section.vec):
-                    log.debugln(f'{convention.section[section_id][0]:>9}[{i}] {e}')
+                    log.debugln(f"{convention.section[section_id][0]:>9}[{i}] {e}")
                 mod.types = type_section.vec
             elif section_id == convention.import_section:
                 import_section = ImportSection.from_reader(io.BytesIO(data))
                 for i, e in enumerate(import_section.vec):
-                    log.debugln(f'{convention.section[section_id][0]:>9}[{i}] {e}')
+                    log.debugln(f"{convention.section[section_id][0]:>9}[{i}] {e}")
                 mod.imports = import_section.vec
             elif section_id == convention.function_section:
                 function_section = FunctionSection.from_reader(io.BytesIO(data))
-                num_imported_funcs = sum(1 for _ in filter(lambda i: i.kind == convention.extern_func, mod.imports))
+                num_imported_funcs = sum(
+                    1
+                    for _ in filter(
+                        lambda i: i.kind == convention.extern_func, mod.imports
+                    )
+                )
                 for i, e in enumerate(function_section.vec):
-                    log.debugln(f'{convention.section[section_id][0]:>9}[{i}] func={num_imported_funcs+i} sig={e}')
+                    log.debugln(
+                        f"{convention.section[section_id][0]:>9}[{i}] func={num_imported_funcs+i} sig={e}"
+                    )
             elif section_id == convention.table_section:
                 table_section = TableSection.from_reader(io.BytesIO(data))
                 for i, e in enumerate(table_section.vec):
-                    log.debugln(f'{convention.section[section_id][0]:>9}[{i}] {e}')
+                    log.debugln(f"{convention.section[section_id][0]:>9}[{i}] {e}")
                 mod.tables = table_section.vec
             elif section_id == convention.memory_section:
                 memory_section = MemorySection.from_reader(io.BytesIO(data))
                 for i, e in enumerate(memory_section.vec):
-                    log.debugln(f'{convention.section[section_id][0]:>9}[{i}] {e}')
+                    log.debugln(f"{convention.section[section_id][0]:>9}[{i}] {e}")
                 mod.mems = memory_section.vec
             elif section_id == convention.global_section:
                 global_section = GlobalSection.from_reader(io.BytesIO(data))
                 for i, e in enumerate(global_section.vec):
-                    log.debugln(f'{convention.section[section_id][0]:>9}[{i}] {e}')
+                    log.debugln(f"{convention.section[section_id][0]:>9}[{i}] {e}")
                 mod.globals = global_section.vec
             elif section_id == convention.export_section:
                 export_section = ExportSection.from_reader(io.BytesIO(data))
                 for i, e in enumerate(export_section.vec):
-                    log.debugln(f'{convention.section[section_id][0]:>9}[{i}] {e}')
+                    log.debugln(f"{convention.section[section_id][0]:>9}[{i}] {e}")
                 mod.exports = export_section.vec
             elif section_id == convention.start_section:
                 start_section = StartSection.from_reader(io.BytesIO(data))
-                log.debugln(f'{convention.section[section_id][0]:>12} {start_section.start_function}')
+                log.debugln(
+                    f"{convention.section[section_id][0]:>12} {start_section.start_function}"
+                )
                 mod.start = start_section.start_function.funcidx
             elif section_id == convention.element_section:
                 element_section = ElementSection.from_reader(io.BytesIO(data))
                 for i, e in enumerate(element_section.vec):
-                    log.debugln(f'{convention.section[section_id][0]:>9}[{i}] {e}')
+                    log.debugln(f"{convention.section[section_id][0]:>9}[{i}] {e}")
                 mod.elem = element_section.vec
             elif section_id == convention.code_section:
                 code_section = CodeSection.from_reader(io.BytesIO(data))
@@ -824,23 +849,38 @@ class Module:
                 def printex(instrs: typing.List[Instruction], prefix=0):
                     for e in instrs:
                         a = f'           | {" " * prefix}{convention.opcodes[e.code][0]}'
-                        if e.code in [convention.block, convention.loop, convention.if_]:
-                            log.debugln(f'{a} {convention.blocktype[e.immediate_arguments][0]}')
+                        if e.code in [
+                            convention.block,
+                            convention.loop,
+                            convention.if_,
+                        ]:
+                            log.debugln(
+                                f"{a} {convention.blocktype[e.immediate_arguments][0]}"
+                            )
                             prefix += 2
                         elif e.code == convention.end:
                             prefix -= 2
                             a = f'           | {" " * prefix}{convention.opcodes[e.code][0]}'
-                            log.debugln(f'{a}')
+                            log.debugln(f"{a}")
                         elif e.immediate_arguments is None:
-                            log.debugln(f'{a}')
+                            log.debugln(f"{a}")
                         elif isinstance(e.immediate_arguments, list):
-                            log.debugln(f'{a} {" ".join([str(e) for e in e.immediate_arguments])}')
+                            log.debugln(
+                                f'{a} {" ".join([str(e) for e in e.immediate_arguments])}'
+                            )
                         else:
-                            log.debugln(f'{a} {e.immediate_arguments}')
+                            log.debugln(f"{a} {e.immediate_arguments}")
 
-                num_imported_funcs = sum(1 for _ in filter(lambda i: i.kind == convention.extern_func, mod.imports))
+                num_imported_funcs = sum(
+                    1
+                    for _ in filter(
+                        lambda i: i.kind == convention.extern_func, mod.imports
+                    )
+                )
                 for i, e in enumerate(code_section.vec):
-                    log.debugln(f'{convention.section[section_id][0]:>9}[{i}] func={num_imported_funcs+i} {e}')
+                    log.debugln(
+                        f"{convention.section[section_id][0]:>9}[{i}] func={num_imported_funcs+i} {e}"
+                    )
                     printex(e.expr.data)
                     func = Function()
                     func.typeidx = function_section.vec[i]
@@ -850,9 +890,9 @@ class Module:
             elif section_id == convention.data_section:
                 data_section = DataSection.from_reader(io.BytesIO(data))
                 for i, e in enumerate(data_section.vec):
-                    log.debugln(f'{convention.section[section_id][0]:>9}[{i}] {e}')
+                    log.debugln(f"{convention.section[section_id][0]:>9}[{i}] {e}")
                 mod.data = data_section.vec
             else:
-                raise Exception('pywasm: invalid section id')
-        log.debugln('')
+                raise Exception("pywasm: invalid section id")
+        log.debugln("")
         return mod
