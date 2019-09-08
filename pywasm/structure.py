@@ -24,6 +24,9 @@ class FunctionType:
             return f"({a}) -> {b}"
         return f"({a})"
 
+    def to_writer(self, w: typing.BinaryIO):
+        pass
+
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
         o = FunctionType()
@@ -55,6 +58,9 @@ class Limits:
             return f"minimum={self.minimum} maximum={self.maximum}"
         return f"minimum={self.minimum}"
 
+    def to_writer(self, w: typing.BinaryIO):
+        pass
+
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
         flag = ord(r.read(1))
@@ -74,6 +80,9 @@ class MemoryType:
     def from_reader(cls, r: typing.BinaryIO):
         return Limits.from_reader(r)
 
+    def to_writer(self, w: typing.BinaryIO):
+        pass
+
 
 class TableType:
     # Table types classify tables over elements of element types within a size range.
@@ -92,6 +101,9 @@ class TableType:
     def __repr__(self):
         a = convention.elemtype[self.elemtype][0]
         return f"{a} {self.limits}"
+
+    def to_writer(self, w: typing.BinaryIO):
+        pass
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
@@ -117,6 +129,9 @@ class GlobalType:
         if self.mut:
             return f"var {a}"
         return f"const {a}"
+
+    def to_writer(self, w: typing.BinaryIO):
+        pass
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
@@ -145,6 +160,9 @@ class Instruction:
         if self.immediate_arguments is None:
             return f"{convention.opcodes[self.code][0]}"
         return f"{convention.opcodes[self.code][0]} {self.immediate_arguments}"
+
+    def to_writer(self, w: typing.BinaryIO):
+        pass
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
@@ -220,6 +238,9 @@ class Expression:
             raise Exception("pywasm: function ended in middle of block")
         return composition
 
+    def to_writer(self, w: typing.BinaryIO):
+        pass
+
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
         o = Expression()
@@ -249,6 +270,9 @@ class Locals:
         self.n: int
         self.valtype: int
 
+    def to_writer(self, w: typing.BinaryIO):
+        pass
+
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
         o = Locals()
@@ -277,6 +301,9 @@ class Code:
 
     def __repr__(self):
         return f'locals=[{", ".join([convention.valtype[i][0] for i in self.locals])}]'
+
+    def to_writer(self, w: typing.BinaryIO):
+        pass
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
@@ -325,6 +352,9 @@ class Table:
             f"{convention.elemtype[self.tabletype.elemtype][0]} {self.tabletype.limits}"
         )
 
+    def to_writer(self, w: typing.BinaryIO):
+        pass
+
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
         o = Table()
@@ -343,6 +373,9 @@ class Memory:
     def __repr__(self):
         return f"{self.memtype}"
 
+    def to_writer(self, w: typing.BinaryIO):
+        pass
+
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
         o = Memory()
@@ -360,6 +393,9 @@ class Global:
 
     def __repr__(self):
         return f"{self.globaltype} expr={self.expr}>"
+
+    def to_writer(self, w: typing.BinaryIO):
+        pass
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
@@ -380,6 +416,9 @@ class ElementSegment:
         self.tableidx: int
         self.expr: Expression
         self.init: typing.List[int]
+
+    def to_writer(self, w: typing.BinaryIO):
+        pass
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
@@ -406,6 +445,9 @@ class DataSegment:
     def __repr__(self):
         return self.init[:32].decode()
 
+    def to_writer(self, w: typing.BinaryIO):
+        pass
+
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
         o = DataSegment()
@@ -425,6 +467,9 @@ class StartFunction:
 
     def __repr__(self):
         return f"Function[{self.funcidx}]"
+
+    def to_writer(self, w: typing.BinaryIO):
+        pass
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
@@ -457,6 +502,9 @@ class Export:
         if self.kind == convention.extern_global:
             return f"{self.name} -> Global[{self.desc}]"
         return f"{self.name}"
+
+    def to_writer(self, w: typing.BinaryIO):
+        pass
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
@@ -495,6 +543,9 @@ class Import:
             return f"{self.module}.{self.name} -> Global[{self.desc}]"
         return f"{self.module}.{self.name}"
 
+    def to_writer(self, w: typing.BinaryIO):
+        pass
+
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
         o = Import()
@@ -528,15 +579,15 @@ class CustomSection:
 
     def to_writer(self, w: typing.BinaryIO):
         w.write("\x00")
-        # TODO
-        pass
+        common.write_bytes(w, self.name.encode())
+        w.write(self.data)  # FIXME: Do we have to store num of bytes written?
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
         o = CustomSection()
         n = common.read_count(r, 32)
         o.name = r.read(n).decode()
-        o.data = bytearray(r.read(-1))
+        o.data = bytearray(r.read(-1))  # FIXME: -1? How many bytes are read?
         return o
 
 
@@ -548,6 +599,9 @@ class TypeSection:
 
     def __init__(self):
         self.vec: typing.List[FunctionType] = []
+
+    def to_writer(self, w: typing.BinaryIO):
+        pass
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
@@ -571,6 +625,9 @@ class ImportSection:
     def __init__(self):
         self.vec: typing.List[Import] = []
 
+    def to_writer(self, w: typing.BinaryIO):
+        pass
+
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
         o = ImportSection()
@@ -590,6 +647,9 @@ class FunctionSection:
     def __init__(self):
         self.vec: typing.List[int] = []
 
+    def to_writer(self, w: typing.BinaryIO):
+        pass
+
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
         o = FunctionSection()
@@ -607,6 +667,9 @@ class TableSection:
 
     def __init__(self):
         self.vec: typing.List[Table] = []
+
+    def to_writer(self, w: typing.BinaryIO):
+        pass
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
@@ -626,6 +689,9 @@ class MemorySection:
     def __init__(self):
         self.vec: typing.List[Memory] = []
 
+    def to_writer(self, w: typing.BinaryIO):
+        pass
+
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
         o = MemorySection()
@@ -643,6 +709,9 @@ class GlobalSection:
 
     def __init__(self):
         self.vec: typing.List[Global] = []
+
+    def to_writer(self, w: typing.BinaryIO):
+        pass
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
@@ -666,6 +735,9 @@ class ExportSection:
     def __init__(self):
         self.vec: typing.List[Export] = []
 
+    def to_writer(self, w: typing.BinaryIO):
+        pass
+
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
         o = ExportSection()
@@ -684,6 +756,9 @@ class StartSection:
     def __init__(self):
         self.start_function: StartFunction
 
+    def to_writer(self, w: typing.BinaryIO):
+        pass
+
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
         o = StartSection()
@@ -699,6 +774,9 @@ class ElementSection:
     # elem ::= x:tableidx e:expr y∗:vec(funcidx) ⇒ {table x, offset e, init y∗}
     def __init__(self):
         self.vec: typing.List[ElementSegment]
+
+    def to_writer(self, w: typing.BinaryIO):
+        pass
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
@@ -717,6 +795,9 @@ class CodeSection:
     def __init__(self):
         self.vec: typing.List[Code] = []
 
+    def to_writer(self, w: typing.BinaryIO):
+        pass
+
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
         o = CodeSection()
@@ -733,6 +814,9 @@ class DataSection:
     # data ::= x:memidx e:expr b∗:vec(byte) ⇒ {data x,offset e,init b∗}
     def __init__(self):
         self.vec: typing.List[DataSegment] = []
+
+    def to_writer(self, w: typing.BinaryIO):
+        pass
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
