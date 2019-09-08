@@ -283,7 +283,22 @@ def leb_encode_unsigned(writer, n, maxbits=32):
 
 
 def leb_encode_signed(writer, n, maxbits=32):
-    pass
+    assert n < 0
+
+    nbits = n.bit_length() + 1
+    assert nbits <= maxbits
+
+    c = math.ceil(nbits / 7.0)
+
+    while c:
+        b = n & 0x7F
+        n = n >> 7
+        c -= 1
+
+        if c:
+            b |= 0x80
+
+        writer.write(bytes([b]))
 
 
 def rotl_u32(x: int, k: int):
