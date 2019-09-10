@@ -62,7 +62,13 @@ class Limits:
         return f"minimum={self.minimum}"
 
     def to_writer(self, w: typing.BinaryIO):
-        pass
+        n = 0
+        w.write(bytes[self.flag])
+        n += 1
+        n += common.write_count(w, self.minimum)
+        if self.flag:
+            n += common.write_count(w, self.maximum)
+        return n
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
@@ -82,9 +88,6 @@ class MemoryType:
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
         return Limits.from_reader(r)
-
-    def to_writer(self, w: typing.BinaryIO):
-        pass
 
 
 class TableType:
@@ -106,7 +109,11 @@ class TableType:
         return f"{a} {self.limits}"
 
     def to_writer(self, w: typing.BinaryIO):
-        pass
+        n = 0
+        w.write(bytes[self.elemtype])
+        n += 1
+        n += self.limits.to_writer(w)
+        return n
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
@@ -134,7 +141,10 @@ class GlobalType:
         return f"const {a}"
 
     def to_writer(self, w: typing.BinaryIO):
-        pass
+        w.write(bytes[self.valtype])
+        w.write(bytes[1 if self.mut else 0])
+        n = 2
+        return n
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
@@ -547,7 +557,25 @@ class Import:
         return f"{self.module}.{self.name}"
 
     def to_writer(self, w: typing.BinaryIO):
-        pass
+        n = 0
+        n += common.write_bytes(w, self.module.encode())
+        n += common.write_bytes(w, self.name.encode())
+        w.write(bytes[self.kind])
+        n += 1
+
+        if self.kind == convention.extern_func:
+            n += common.write_count(w, self.desc)
+        elif self.kind in [
+            convention.extern_table,
+            convention.extern_mem,
+            convention.extern_global,
+        ]:
+            self.desc = GlobalType.from_reader(r)
+            n += self.desc.to_writer(w)
+        else:
+            raise Exception("pywasm: malformed")
+
+        return n
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
@@ -606,8 +634,11 @@ class TypeSection:
     def to_writer(self, w: typing.BinaryIO):
         n = 0
         n += common.write_count(w, len(self.vec))
+
         for f in self.vec:
             n += f.to_writer(w)
+
+        return n
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
@@ -632,7 +663,13 @@ class ImportSection:
         self.vec: typing.List[Import] = []
 
     def to_writer(self, w: typing.BinaryIO):
-        pass
+        n = 0
+        n += common.write_count(w, len(self.vec))
+
+        for i in self.vec:
+            n += i.to_writer(w)
+
+        return n
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
