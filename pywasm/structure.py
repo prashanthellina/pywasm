@@ -25,7 +25,10 @@ class FunctionType:
         return f"({a})"
 
     def to_writer(self, w: typing.BinaryIO):
-        pass
+        n = 0
+        n += common.write_bytes(w, self.args)
+        n += common.write_bytes(w, self.rets)
+        return n
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
@@ -601,7 +604,10 @@ class TypeSection:
         self.vec: typing.List[FunctionType] = []
 
     def to_writer(self, w: typing.BinaryIO):
-        pass
+        n = 0
+        n += common.write_count(w, len(self.vec))
+        for f in self.vec:
+            n += f.to_writer(w)
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
