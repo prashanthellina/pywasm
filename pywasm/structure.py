@@ -366,7 +366,7 @@ class Table:
         )
 
     def to_writer(self, w: typing.BinaryIO):
-        pass
+        return self.tabletype.to_writer(w)
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
@@ -387,7 +387,7 @@ class Memory:
         return f"{self.memtype}"
 
     def to_writer(self, w: typing.BinaryIO):
-        pass
+        return self.memtype.to_writer(w)
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
@@ -408,7 +408,10 @@ class Global:
         return f"{self.globaltype} expr={self.expr}>"
 
     def to_writer(self, w: typing.BinaryIO):
-        pass
+        n = 0
+        n += self.globaltype.to_writer(w)
+        n += self.expr.to_writer(w)
+        return n
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
@@ -431,7 +434,15 @@ class ElementSegment:
         self.init: typing.List[int]
 
     def to_writer(self, w: typing.BinaryIO):
-        pass
+        n = 0
+        n += common.write_count(w, self.tableidx)
+        n += self.expr.to_writer(w)
+        n += common.write_count(w, len(self.init))
+
+        for x in self.init:
+            n += common.write_count(w, x)
+
+        return n
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
@@ -482,7 +493,7 @@ class StartFunction:
         return f"Function[{self.funcidx}]"
 
     def to_writer(self, w: typing.BinaryIO):
-        pass
+        return common.write_count(w, self.funcidx)
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
@@ -691,7 +702,13 @@ class FunctionSection:
         self.vec: typing.List[int] = []
 
     def to_writer(self, w: typing.BinaryIO):
-        pass
+        n = 0
+        n += common.write_count(w, len(self.vec))
+
+        for f in self.vec:
+            n += common.write_count(w, f)
+
+        return n
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
@@ -712,7 +729,13 @@ class TableSection:
         self.vec: typing.List[Table] = []
 
     def to_writer(self, w: typing.BinaryIO):
-        pass
+        n = 0
+        n += common.write_count(w, len(self.vec))
+
+        for t in self.vec:
+            n += t.to_writer(w)
+
+        return n
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
@@ -733,7 +756,13 @@ class MemorySection:
         self.vec: typing.List[Memory] = []
 
     def to_writer(self, w: typing.BinaryIO):
-        pass
+        n = 0
+        n += common.write_count(w, len(self.vec))
+
+        for m in self.vec:
+            n += m.to_writer(w)
+
+        return n
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
@@ -754,7 +783,13 @@ class GlobalSection:
         self.vec: typing.List[Global] = []
 
     def to_writer(self, w: typing.BinaryIO):
-        pass
+        n = 0
+        n += common.write_count(w, len(self.vec))
+
+        for g in self.vec:
+            n += g.to_writer(w)
+
+        return n
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
@@ -779,7 +814,13 @@ class ExportSection:
         self.vec: typing.List[Export] = []
 
     def to_writer(self, w: typing.BinaryIO):
-        pass
+        n = 0
+        n += common.write_count(w, len(self.vec))
+
+        for e in self.vec:
+            n += e.to_writer(w)
+
+        return n
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
@@ -800,7 +841,7 @@ class StartSection:
         self.start_function: StartFunction
 
     def to_writer(self, w: typing.BinaryIO):
-        pass
+        return self.start_function.to_writer(w)
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
@@ -819,7 +860,13 @@ class ElementSection:
         self.vec: typing.List[ElementSegment]
 
     def to_writer(self, w: typing.BinaryIO):
-        pass
+        n = 0
+        n += common.write_count(w, len(self.vec))
+
+        for e in self.vec:
+            n += e.to_writer(w)
+
+        return n
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
@@ -839,7 +886,13 @@ class CodeSection:
         self.vec: typing.List[Code] = []
 
     def to_writer(self, w: typing.BinaryIO):
-        pass
+        n = 0
+        n += common.write_count(w, len(self.vec))
+
+        for c in self.vec:
+            n += c.to_writer(w)
+
+        return n
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
@@ -859,7 +912,13 @@ class DataSection:
         self.vec: typing.List[DataSegment] = []
 
     def to_writer(self, w: typing.BinaryIO):
-        pass
+        n = 0
+        n += common.write_count(w, len(self.vec))
+
+        for d in self.vec:
+            n += d.to_writer(w)
+
+        return n
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
