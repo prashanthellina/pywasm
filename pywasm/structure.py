@@ -339,7 +339,11 @@ class Locals:
         self.valtype: int
 
     def to_writer(self, w: typing.BinaryIO):
-        pass
+        n = 0
+        n += common.write_count(w, self.n, maxbits=32)
+        w.write(bytes[self.valtype])
+        n += 1
+        return n
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
@@ -365,13 +369,22 @@ class Code:
     # locals ::= n:u32 t:valtype ⇒ tn
     def __init__(self):
         self.locals: typing.List[int] = []
+        self._locals: typing.List[Locals] = []
         self.expr: Expression
 
     def __repr__(self):
         return f'locals=[{", ".join([convention.valtype[i][0] for i in self.locals])}]'
 
     def to_writer(self, w: typing.BinaryIO):
-        pass
+        n = 0
+        n += common.write_count(w, len(self._locals), maxbits=32)
+        n += common.write_count(w, len(self._locals), maxbits=32)
+
+        for l in range(self._locals):
+            n += l.to_writer(w)
+
+        n += self.expr.to_writer(w)
+        return n
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
@@ -380,6 +393,7 @@ class Code:
         n = common.read_count(r, 32)
         for _ in range(n):
             l = Locals.from_reader(r)
+            o._locals.append(l)
             o.locals.extend([l.valtype for _ in range(l.n)])
         o.expr = Expression.from_reader(r)
         return o
