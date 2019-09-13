@@ -539,7 +539,11 @@ class DataSegment:
         return self.init[:32].decode()
 
     def to_writer(self, w: typing.BinaryIO):
-        pass
+        n = 0
+        n += common.write_count(w, self.memidx, maxbits=32)
+        n += self.expr.to_writer(w)
+        n += common.write_bytes(w, self.init, maxbits=32)
+        return n
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
@@ -597,7 +601,12 @@ class Export:
         return f"{self.name}"
 
     def to_writer(self, w: typing.BinaryIO):
-        pass
+        n = 0
+        n += common.write_bytes(w, self.name.encode(), maxbits=32)
+        w.write(bytes[self.kind])
+        w += 1
+        n += common.write_count(w, self.desc, maxbits=32)
+        return n
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
