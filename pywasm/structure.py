@@ -1,5 +1,6 @@
 import io
 import typing
+import collections
 
 from pywasm import common
 from pywasm import convention
@@ -693,6 +694,9 @@ class CustomSection:
     #
     # customsec ::= section0(custom)
     # custom ::= name byte∗
+
+    CODE = convention.custom_section
+
     def __init__(self):
         self.name: str = None
         self.data: bytearray = None
@@ -716,6 +720,8 @@ class TypeSection:
     # types that represent the types component of a module.
     #
     # typesec ::= ft∗:section1(vec(functype)) ⇒ ft∗
+
+    CODE = convention.type_section
 
     def __init__(self):
         self.vec: typing.List[FunctionType] = []
@@ -748,6 +754,8 @@ class ImportSection:
     #              | 0x02 mt:memtype ⇒ mem mt
     #              | 0x03 gt:globaltype ⇒ global gt
 
+    CODE = convention.import_section
+
     def __init__(self):
         self.vec: typing.List[Import] = []
 
@@ -776,6 +784,8 @@ class FunctionSection:
     #
     # funcsec ::= x∗:section3(vec(typeidx)) ⇒ x∗
 
+    CODE = convention.function_section
+
     def __init__(self):
         self.vec: typing.List[int] = []
 
@@ -802,6 +812,8 @@ class TableSection:
     #
     # tablesec ::= tab∗:section4(vec(table)) ⇒ tab∗
     # table ::= tt:tabletype ⇒ {type tt}
+
+    CODE = convention.table_section
 
     def __init__(self):
         self.vec: typing.List[Table] = []
@@ -830,6 +842,8 @@ class MemorySection:
     # memsec ::= mem∗:section5(vec(mem)) ⇒ mem∗
     # mem ::= mt:memtype ⇒ {type mt}
 
+    CODE = convention.memory_section
+
     def __init__(self):
         self.vec: typing.List[Memory] = []
 
@@ -856,6 +870,8 @@ class GlobalSection:
     #
     # globalsec ::= glob*:section6(vec(global)) ⇒ glob∗
     # global ::= gt:globaltype e:expr ⇒ {type gt, init e}
+
+    CODE = convention.global_section
 
     def __init__(self):
         self.vec: typing.List[Global] = []
@@ -888,6 +904,8 @@ class ExportSection:
     #              | 0x02 x:memidx ⇒ mem x
     #              | 0x03 x:globalidx⇒global x
 
+    CODE = convention.export_section
+
     def __init__(self):
         self.vec: typing.List[Export] = []
 
@@ -915,6 +933,8 @@ class StartSection:
     # startsec ::= st?:section8(start) ⇒ st?
     # start ::= x:funcidx ⇒ {func x}
 
+    CODE = convention.start_section
+
     def __init__(self):
         self.start_function: StartFunction
 
@@ -934,6 +954,9 @@ class ElementSection:
     #
     # elemsec ::= seg∗:section9(vec(elem)) ⇒ seg
     # elem ::= x:tableidx e:expr y∗:vec(funcidx) ⇒ {table x, offset e, init y∗}
+
+    CODE = convention.element_section
+
     def __init__(self):
         self.vec: typing.List[ElementSegment]
 
@@ -960,6 +983,9 @@ class CodeSection:
     # represent the locals and body field of the functions in the funcs
     # component of a module. The type fields of the respective functions are
     # encoded separately in the function section.
+
+    CODE = convention.code_section
+
     def __init__(self):
         self.vec: typing.List[Code] = []
 
@@ -986,6 +1012,9 @@ class DataSection:
     #
     # datasec ::= seg∗:section11(vec(data)) ⇒ seg
     # data ::= x:memidx e:expr b∗:vec(byte) ⇒ {data x,offset e,init b∗}
+
+    CODE = convention.data_section
+
     def __init__(self):
         self.vec: typing.List[DataSegment] = []
 
@@ -1019,17 +1048,43 @@ class Module:
         self.imports: typing.List[Import] = []
         self.exports: typing.List[Export] = []
 
+        self.sections = collections.defaultdict(list)
+
     @classmethod
     def load(cls, name: str) -> "Module":
         with open(name, "rb") as f:
             return cls.from_reader(f)
 
     def to_writer(self, w: typing.BinaryIO):
+        n = 0
+
         # Write Magic
         w.write(bytes([0x00, 0x61, 0x73, 0x6D]))
+        n += 4
 
         # Write version
         w.write(bytes([0x01, 0x00, 0x00, 0x00]))
+        n += 4
+
+        for _, sections in self.sections.items():
+            for section in sections:
+
+                # Write the section code byte
+                w.write(bytes([section.CODE]))
+                n += 1
+
+                # Serialize section to temp location in mem
+                b = io.BytesIO()
+                section.to_writer(b)
+
+                # Write section length
+                n += common.write_count(w, len(b), maxbits=32)
+
+                # Write section data
+                w.write(b.getvalue())
+                n += len(b)
+
+        return n
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO) -> "Module":
@@ -1040,32 +1095,44 @@ class Module:
         mod = Module()
         log.debugln("Sections:")
         log.debugln()
+
         while True:
             section_id_byte = r.read(1)
+
             if not section_id_byte:
                 break
+
             section_id = ord(section_id_byte)
             n = common.read_count(r, 32)
             data = r.read(n)
+
             if len(data) != n:
                 raise Exception("pywasm: invalid section size")
+
             if section_id == convention.custom_section:
                 custom_section = CustomSection.from_reader(io.BytesIO(data))
+                mod.sections["custom"].append(custom_section)
                 log.debugln(
                     f"{convention.section[section_id][0]:>9} {custom_section.name}"
                 )
+
             elif section_id == convention.type_section:
                 type_section = TypeSection.from_reader(io.BytesIO(data))
+                mod.sections["type"].append(type_section)
                 for i, e in enumerate(type_section.vec):
                     log.debugln(f"{convention.section[section_id][0]:>9}[{i}] {e}")
                 mod.types = type_section.vec
+
             elif section_id == convention.import_section:
                 import_section = ImportSection.from_reader(io.BytesIO(data))
+                mod.sections["import"].append(import_section)
                 for i, e in enumerate(import_section.vec):
                     log.debugln(f"{convention.section[section_id][0]:>9}[{i}] {e}")
                 mod.imports = import_section.vec
+
             elif section_id == convention.function_section:
                 function_section = FunctionSection.from_reader(io.BytesIO(data))
+                mod.sections["function"].append(function_section)
                 num_imported_funcs = sum(
                     1
                     for _ in filter(
@@ -1076,39 +1143,53 @@ class Module:
                     log.debugln(
                         f"{convention.section[section_id][0]:>9}[{i}] func={num_imported_funcs+i} sig={e}"
                     )
+
             elif section_id == convention.table_section:
                 table_section = TableSection.from_reader(io.BytesIO(data))
+                mod.sections["table"].append(table_section)
                 for i, e in enumerate(table_section.vec):
                     log.debugln(f"{convention.section[section_id][0]:>9}[{i}] {e}")
                 mod.tables = table_section.vec
+
             elif section_id == convention.memory_section:
                 memory_section = MemorySection.from_reader(io.BytesIO(data))
+                mod.sections["memory"].append(memory_section)
                 for i, e in enumerate(memory_section.vec):
                     log.debugln(f"{convention.section[section_id][0]:>9}[{i}] {e}")
                 mod.mems = memory_section.vec
+
             elif section_id == convention.global_section:
                 global_section = GlobalSection.from_reader(io.BytesIO(data))
+                mod.sections["global"].append(global_section)
                 for i, e in enumerate(global_section.vec):
                     log.debugln(f"{convention.section[section_id][0]:>9}[{i}] {e}")
                 mod.globals = global_section.vec
+
             elif section_id == convention.export_section:
                 export_section = ExportSection.from_reader(io.BytesIO(data))
+                mod.sections["export"].append(export_section)
                 for i, e in enumerate(export_section.vec):
                     log.debugln(f"{convention.section[section_id][0]:>9}[{i}] {e}")
                 mod.exports = export_section.vec
+
             elif section_id == convention.start_section:
                 start_section = StartSection.from_reader(io.BytesIO(data))
+                mod.sections["start"].append(start_section)
                 log.debugln(
                     f"{convention.section[section_id][0]:>12} {start_section.start_function}"
                 )
                 mod.start = start_section.start_function.funcidx
+
             elif section_id == convention.element_section:
                 element_section = ElementSection.from_reader(io.BytesIO(data))
+                mod.sections["element"].append(element_section)
                 for i, e in enumerate(element_section.vec):
                     log.debugln(f"{convention.section[section_id][0]:>9}[{i}] {e}")
                 mod.elem = element_section.vec
+
             elif section_id == convention.code_section:
                 code_section = CodeSection.from_reader(io.BytesIO(data))
+                mod.sections["code"].append(code_section)
 
                 def printex(instrs: typing.List[Instruction], prefix=0):
                     for e in instrs:
@@ -1151,11 +1232,14 @@ class Module:
                     func.locals = e.locals
                     func.expr = e.expr
                     mod.funcs.append(func)
+
             elif section_id == convention.data_section:
                 data_section = DataSection.from_reader(io.BytesIO(data))
+                mod.sections["data"].append(data_section)
                 for i, e in enumerate(data_section.vec):
                     log.debugln(f"{convention.section[section_id][0]:>9}[{i}] {e}")
                 mod.data = data_section.vec
+
             else:
                 raise Exception("pywasm: invalid section id")
         log.debugln("")

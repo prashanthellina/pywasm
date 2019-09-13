@@ -16,6 +16,6 @@ def write_count(writer, n: int, maxbits=32):
 
 def write_bytes(writer, data: bytearray, maxbits=32, signed=False):
     n = len(data)
-    n += write_count(w, len(data), maxbits)
+    n += write_count(writer, len(data), maxbits)
     writer.write(data)
     return n
