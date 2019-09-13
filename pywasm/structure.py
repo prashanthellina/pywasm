@@ -175,7 +175,57 @@ class Instruction:
         return f"{convention.opcodes[self.code][0]} {self.immediate_arguments}"
 
     def to_writer(self, w: typing.BinaryIO):
-        pass
+        n = 0
+        w.write(bytes[self.code])
+        n += 1
+
+        code_size = convention.opcodes[self.code][1]
+
+        if code_size == "":
+            pass  # no immediate arguments
+        elif code_size == "u8":
+            n += common.write_count(w, self.immediate_arguments, maxbits=8)
+        elif code_size == "u32":
+            n += common.write_count(w, self.immediate_arguments, maxbits=32)
+        elif code_size == "i32":
+            n += common.write_count(
+                w, self.immediate_arguments, maxbits=32, signed=True
+            )
+        elif code_size == "i64":
+            n += common.write_count(
+                w, self.immediate_arguments, maxbits=64, signed=True
+            )
+        elif code_size == "f32":
+            b = struct.pack("<f", self.immediate_arguments)
+            w.write(b)
+            n += len(b)
+        elif code_size == "f64":
+            b = struct.pack("<d", self.immediate_arguments)
+            w.write(b)
+            n += len(b)
+        elif code_size == "u32,u8":
+            a, b = self.immediate_arguments
+            n = 0
+            n += common.write_count(w, a, maxbits=32)
+            n += common.write_count(w, b, maxbits=8)
+        elif code_size == "u32,u32":
+            n = sum(
+                [common.write_count(w, x, maxbits=32) for x in self.immediate_arguments]
+            )
+        elif code == convention.br_table:
+            n = 0
+
+            a, b = self.immediate_arguments
+            n += common.write_count(w, len(a), maxbits=32)
+
+            for x in a:
+                n += common.write_count(w, x, maxbits=32)
+
+            n += common.write_count(w, b, maxbits=32)
+        else:
+            raise Exception("pywasm: invalid code size")
+
+        return n
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
@@ -252,7 +302,12 @@ class Expression:
         return composition
 
     def to_writer(self, w: typing.BinaryIO):
-        pass
+        n = 0
+
+        for inst in self.data:
+            n += inst.to_writer(w)
+
+        return n
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
