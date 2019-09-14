@@ -7,10 +7,18 @@ PATH = os.path.dirname(__file__)
 
 f = os.path.join(PATH, "../examples/add.wasm")
 f = open(f, "rb")
-m = pywasm.structure.Module.from_reader(f)
+inf = io.BytesIO()
+inf.write(f.read())
+inf.seek(0)
+
+indata = inf.getvalue()
+
+m = pywasm.structure.Module.from_reader(inf)
 
 outf = io.BytesIO()
 m.to_writer(outf)
+
+outdata = outf.getvalue()
 
 """
 

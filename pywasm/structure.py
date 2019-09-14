@@ -64,11 +64,15 @@ class Limits:
 
     def to_writer(self, w: typing.BinaryIO):
         n = 0
-        w.write(bytes[self.flag])
+
+        flag = 1 if self.maximum else 0
+        w.write(bytes([flag]))
         n += 1
+
         n += common.write_count(w, self.minimum)
-        if self.flag:
+        if flag:
             n += common.write_count(w, self.maximum)
+
         return n
 
     @classmethod
@@ -111,7 +115,7 @@ class TableType:
 
     def to_writer(self, w: typing.BinaryIO):
         n = 0
-        w.write(bytes[self.elemtype])
+        w.write(bytes([self.elemtype]))
         n += 1
         n += self.limits.to_writer(w)
         return n
@@ -177,7 +181,7 @@ class Instruction:
 
     def to_writer(self, w: typing.BinaryIO):
         n = 0
-        w.write(bytes[self.code])
+        w.write(bytes([self.code]))
         n += 1
 
         code_size = convention.opcodes[self.code][1]
@@ -342,7 +346,7 @@ class Locals:
     def to_writer(self, w: typing.BinaryIO):
         n = 0
         n += common.write_count(w, self.n, maxbits=32)
-        w.write(bytes[self.valtype])
+        w.write(bytes([self.valtype]))
         n += 1
         return n
 
@@ -381,7 +385,7 @@ class Code:
         n += common.write_count(w, len(self._locals), maxbits=32)
         n += common.write_count(w, len(self._locals), maxbits=32)
 
-        for l in range(self._locals):
+        for l in self._locals:
             n += l.to_writer(w)
 
         n += self.expr.to_writer(w)
@@ -505,12 +509,12 @@ class ElementSegment:
 
     def to_writer(self, w: typing.BinaryIO):
         n = 0
-        n += common.write_count(w, self.tableidx)
+        n += common.write_count(w, self.tableidx, maxbits=32)
         n += self.expr.to_writer(w)
-        n += common.write_count(w, len(self.init))
+        n += common.write_count(w, len(self.init), maxbits=32)
 
         for x in self.init:
-            n += common.write_count(w, x)
+            n += common.write_count(w, x, maxbits=32)
 
         return n
 
@@ -567,7 +571,7 @@ class StartFunction:
         return f"Function[{self.funcidx}]"
 
     def to_writer(self, w: typing.BinaryIO):
-        return common.write_count(w, self.funcidx)
+        return common.write_count(w, self.funcidx, maxbits=32)
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
@@ -604,8 +608,8 @@ class Export:
     def to_writer(self, w: typing.BinaryIO):
         n = 0
         n += common.write_bytes(w, self.name.encode(), maxbits=32)
-        w.write(bytes[self.kind])
-        w += 1
+        w.write(bytes([self.kind]))
+        n += 1
         n += common.write_count(w, self.desc, maxbits=32)
         return n
 
@@ -648,13 +652,13 @@ class Import:
 
     def to_writer(self, w: typing.BinaryIO):
         n = 0
-        n += common.write_bytes(w, self.module.encode())
-        n += common.write_bytes(w, self.name.encode())
-        w.write(bytes[self.kind])
+        n += common.write_bytes(w, self.module.encode(), maxbits=32)
+        n += common.write_bytes(w, self.name.encode(), maxbits=32)
+        w.write(bytes([self.kind]))
         n += 1
 
         if self.kind == convention.extern_func:
-            n += common.write_count(w, self.desc)
+            n += common.write_count(w, self.desc, maxbits=32)
         elif self.kind in [
             convention.extern_table,
             convention.extern_mem,
@@ -702,9 +706,15 @@ class CustomSection:
         self.data: bytearray = None
 
     def to_writer(self, w: typing.BinaryIO):
+        n = 0
         w.write("\x00")
-        common.write_bytes(w, self.name.encode())
+        n += 1
+
+        n += common.write_bytes(w, self.name.encode(), maxbits=32)
         w.write(self.data)  # FIXME: Do we have to store num of bytes written?
+        n += len(self.data)
+
+        return n
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
@@ -728,7 +738,7 @@ class TypeSection:
 
     def to_writer(self, w: typing.BinaryIO):
         n = 0
-        n += common.write_count(w, len(self.vec))
+        n += common.write_count(w, len(self.vec), maxbits=32)
 
         for f in self.vec:
             n += f.to_writer(w)
@@ -761,7 +771,7 @@ class ImportSection:
 
     def to_writer(self, w: typing.BinaryIO):
         n = 0
-        n += common.write_count(w, len(self.vec))
+        n += common.write_count(w, len(self.vec), maxbits=32)
 
         for i in self.vec:
             n += i.to_writer(w)
@@ -791,10 +801,10 @@ class FunctionSection:
 
     def to_writer(self, w: typing.BinaryIO):
         n = 0
-        n += common.write_count(w, len(self.vec))
+        n += common.write_count(w, len(self.vec), maxbits=32)
 
         for f in self.vec:
-            n += common.write_count(w, f)
+            n += common.write_count(w, f, maxbits=32)
 
         return n
 
@@ -820,7 +830,7 @@ class TableSection:
 
     def to_writer(self, w: typing.BinaryIO):
         n = 0
-        n += common.write_count(w, len(self.vec))
+        n += common.write_count(w, len(self.vec), maxbits=32)
 
         for t in self.vec:
             n += t.to_writer(w)
@@ -849,7 +859,7 @@ class MemorySection:
 
     def to_writer(self, w: typing.BinaryIO):
         n = 0
-        n += common.write_count(w, len(self.vec))
+        n += common.write_count(w, len(self.vec), maxbits=32)
 
         for m in self.vec:
             n += m.to_writer(w)
@@ -878,7 +888,7 @@ class GlobalSection:
 
     def to_writer(self, w: typing.BinaryIO):
         n = 0
-        n += common.write_count(w, len(self.vec))
+        n += common.write_count(w, len(self.vec), maxbits=32)
 
         for g in self.vec:
             n += g.to_writer(w)
@@ -911,7 +921,7 @@ class ExportSection:
 
     def to_writer(self, w: typing.BinaryIO):
         n = 0
-        n += common.write_count(w, len(self.vec))
+        n += common.write_count(w, len(self.vec), maxbits=32)
 
         for e in self.vec:
             n += e.to_writer(w)
@@ -962,7 +972,7 @@ class ElementSection:
 
     def to_writer(self, w: typing.BinaryIO):
         n = 0
-        n += common.write_count(w, len(self.vec))
+        n += common.write_count(w, len(self.vec), maxbits=32)
 
         for e in self.vec:
             n += e.to_writer(w)
@@ -991,7 +1001,7 @@ class CodeSection:
 
     def to_writer(self, w: typing.BinaryIO):
         n = 0
-        n += common.write_count(w, len(self.vec))
+        n += common.write_count(w, len(self.vec), maxbits=32)
 
         for c in self.vec:
             n += c.to_writer(w)
@@ -1020,7 +1030,7 @@ class DataSection:
 
     def to_writer(self, w: typing.BinaryIO):
         n = 0
-        n += common.write_count(w, len(self.vec))
+        n += common.write_count(w, len(self.vec), maxbits=32)
 
         for d in self.vec:
             n += d.to_writer(w)
@@ -1075,14 +1085,14 @@ class Module:
 
                 # Serialize section to temp location in mem
                 b = io.BytesIO()
-                section.to_writer(b)
+                _n = section.to_writer(b)
 
                 # Write section length
-                n += common.write_count(w, len(b), maxbits=32)
+                n += common.write_count(w, _n, maxbits=32)
 
                 # Write section data
                 w.write(b.getvalue())
-                n += len(b)
+                n += _n
 
         return n
 
