@@ -2,7 +2,9 @@ import os
 import io
 import pywasm
 from pywasm import num, common
+from basescript import init_logger
 
+LOG = init_logger(fmt="pretty", level="DEBUG", fpath='/tmp/dummy.log')
 PATH = os.path.dirname(__file__)
 
 f = os.path.join(PATH, "../examples/add.wasm")
@@ -13,7 +15,7 @@ inf.seek(0)
 
 indata = inf.getvalue()
 
-m = pywasm.structure.Module.from_reader(inf)
+m = pywasm.structure.Module.from_reader(inf, log=LOG)
 
 outf = io.BytesIO()
 m.to_writer(outf)

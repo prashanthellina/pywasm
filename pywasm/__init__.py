@@ -5,39 +5,58 @@ from pywasm import execution
 from pywasm import log
 from pywasm import structure
 
+from deeputil import Dummy
+
+DUMMY_LOG = Dummy()
+
 
 class Runtime:
     # A webassembly runtime manages Store, stack, and other runtime structure. They forming the WebAssembly abstract.
 
-    def __init__(self, module: structure.Module, imps: typing.Dict = None):
+    def __init__(
+        self, module: structure.Module, imps: typing.Dict = None, log=DUMMY_LOG
+    ):
         self.module = module
         self.module_instance = execution.ModuleInstance()
         self.store = execution.Store()
+        self.log = log
 
         imps = imps if imps else {}
         externvals = []
         for e in self.module.imports:
             if e.module not in imps or e.name not in imps[e.module]:
-                raise Exception(f'pywasm: global import {e.module}.{e.name} not found')
+                raise Exception(f"pywasm: global import {e.module}.{e.name} not found")
             if e.kind == convention.extern_func:
-                a = execution.HostFunc(self.module.types[e.desc], imps[e.module][e.name])
+                a = execution.HostFunc(
+                    self.module.types[e.desc], imps[e.module][e.name]
+                )
                 self.store.funcs.append(a)
-                externvals.append(execution.ExternValue(e.kind, len(self.store.funcs) - 1))
+                externvals.append(
+                    execution.ExternValue(e.kind, len(self.store.funcs) - 1)
+                )
                 continue
             if e.kind == convention.extern_table:
                 a = imps[e.module][e.name]
                 self.store.tables.append(a)
-                externvals.append(execution.ExternValue(e.kind, len(self.store.tables) - 1))
+                externvals.append(
+                    execution.ExternValue(e.kind, len(self.store.tables) - 1)
+                )
                 continue
             if e.kind == convention.extern_mem:
                 a = imps[e.module][e.name]
                 self.store.mems.append(a)
-                externvals.append(execution.ExternValue(e.kind, len(self.store.mems) - 1))
+                externvals.append(
+                    execution.ExternValue(e.kind, len(self.store.mems) - 1)
+                )
                 continue
             if e.kind == convention.extern_global:
-                a = execution.GlobalInstance(execution.Value(e.desc.valtype, imps[e.module][e.name]), e.desc.mut)
+                a = execution.GlobalInstance(
+                    execution.Value(e.desc.valtype, imps[e.module][e.name]), e.desc.mut
+                )
                 self.store.globals.append(a)
-                externvals.append(execution.ExternValue(e.kind, len(self.store.globals) - 1))
+                externvals.append(
+                    execution.ExternValue(e.kind, len(self.store.globals) - 1)
+                )
                 continue
         self.module_instance.instantiate(self.module, self.store, externvals)
 
@@ -46,7 +65,7 @@ class Runtime:
         for e in self.module_instance.exports:
             if e.name == name and e.value.extern_type == convention.extern_func:
                 return e.value.addr
-        raise Exception('pywasm: function not found')
+        raise Exception("pywasm: function not found")
 
     def exec(self, name: str, args: typing.List):
         # Invoke a function denoted by the function address with the provided arguments.
@@ -72,15 +91,16 @@ class Runtime:
 # If you have already compiled a module from another language using tools like Emscripten, or loaded and run the code
 # by Javascript yourself, the pywasm API is easy to learn.
 
+
 def on_debug():
     log.lvl = 1
 
 
-def load(name: str, imps: typing.Dict = None) -> Runtime:
+def load(name: str, imps: typing.Dict = None, log=DUMMY_LOG) -> Runtime:
     # Generate a runtime directly by loading a file from disk.
-    with open(name, 'rb') as f:
-        module = structure.Module.from_reader(f)
-        return Runtime(module, imps)
+    with open(name, "rb") as f:
+        module = structure.Module.from_reader(f, log=log)
+        return Runtime(module, imps, log=log)
 
 
 Ctx = execution.Ctx

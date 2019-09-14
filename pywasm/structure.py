@@ -7,6 +7,10 @@ from pywasm import convention
 from pywasm import log
 from pywasm import num
 
+from deeputil import Dummy
+
+DUMMY_LOG = Dummy()
+
 
 class FunctionType:
     # Function types are encoded by the byte 0x60 followed by the respective vectors of parameter and result types.
@@ -1046,7 +1050,7 @@ class DataSection:
 
 
 class Module:
-    def __init__(self):
+    def __init__(self, log=DUMMY_LOG):
         self.types: typing.List[FunctionType] = []
         self.funcs: typing.List[Function] = []
         self.tables: typing.List[Table] = []
@@ -1059,6 +1063,7 @@ class Module:
         self.exports: typing.List[Export] = []
 
         self.sections = collections.defaultdict(list)
+        self.log = log
 
     @classmethod
     def load(cls, name: str) -> "Module":
@@ -1094,17 +1099,26 @@ class Module:
                 w.write(b.getvalue())
                 n += _n
 
+                self.log.debug('wrote_section',
+                    section_id=section.CODE,
+                    data=b.getvalue(),
+                    length=_n,
+                    section_type=convention.section_code_to_name[section.CODE],
+                )
+
         return n
 
     @classmethod
-    def from_reader(cls, r: typing.BinaryIO) -> "Module":
+    def from_reader(cls, r: typing.BinaryIO, log=DUMMY_LOG) -> "Module":
+
         if list(r.read(4)) != [0x00, 0x61, 0x73, 0x6D]:
             raise Exception("pywasm: invalid magic number")
         if list(r.read(4)) != [0x01, 0x00, 0x00, 0x00]:
             raise Exception("pywasm: invalid version")
-        mod = Module()
-        log.debugln("Sections:")
-        log.debugln()
+
+        mod = Module(log=log)
+
+        log.debug("loading_sections")
 
         while True:
             section_id_byte = r.read(1)
@@ -1116,28 +1130,33 @@ class Module:
             n = common.read_count(r, 32)
             data = r.read(n)
 
+            _log = log.bind(
+                section_id=section_id,
+                length=n,
+                data=data,
+                section_type=convention.section_code_to_name[section_id],
+            )
+            _log.debug("found_section")
+
             if len(data) != n:
                 raise Exception("pywasm: invalid section size")
 
             if section_id == convention.custom_section:
                 custom_section = CustomSection.from_reader(io.BytesIO(data))
                 mod.sections["custom"].append(custom_section)
-                log.debugln(
-                    f"{convention.section[section_id][0]:>9} {custom_section.name}"
-                )
 
             elif section_id == convention.type_section:
                 type_section = TypeSection.from_reader(io.BytesIO(data))
                 mod.sections["type"].append(type_section)
-                for i, e in enumerate(type_section.vec):
-                    log.debugln(f"{convention.section[section_id][0]:>9}[{i}] {e}")
+                # for i, e in enumerate(type_section.vec):
+                #    log.debugln(f"{convention.section[section_id][0]:>9}[{i}] {e}")
                 mod.types = type_section.vec
 
             elif section_id == convention.import_section:
                 import_section = ImportSection.from_reader(io.BytesIO(data))
                 mod.sections["import"].append(import_section)
-                for i, e in enumerate(import_section.vec):
-                    log.debugln(f"{convention.section[section_id][0]:>9}[{i}] {e}")
+                # for i, e in enumerate(import_section.vec):
+                #    log.debugln(f"{convention.section[section_id][0]:>9}[{i}] {e}")
                 mod.imports = import_section.vec
 
             elif section_id == convention.function_section:
@@ -1149,52 +1168,52 @@ class Module:
                         lambda i: i.kind == convention.extern_func, mod.imports
                     )
                 )
-                for i, e in enumerate(function_section.vec):
-                    log.debugln(
-                        f"{convention.section[section_id][0]:>9}[{i}] func={num_imported_funcs+i} sig={e}"
-                    )
+                # for i, e in enumerate(function_section.vec):
+                #    log.debugln(
+                #        f"{convention.section[section_id][0]:>9}[{i}] func={num_imported_funcs+i} sig={e}"
+                #    )
 
             elif section_id == convention.table_section:
                 table_section = TableSection.from_reader(io.BytesIO(data))
                 mod.sections["table"].append(table_section)
-                for i, e in enumerate(table_section.vec):
-                    log.debugln(f"{convention.section[section_id][0]:>9}[{i}] {e}")
+                # for i, e in enumerate(table_section.vec):
+                #    log.debugln(f"{convention.section[section_id][0]:>9}[{i}] {e}")
                 mod.tables = table_section.vec
 
             elif section_id == convention.memory_section:
                 memory_section = MemorySection.from_reader(io.BytesIO(data))
                 mod.sections["memory"].append(memory_section)
-                for i, e in enumerate(memory_section.vec):
-                    log.debugln(f"{convention.section[section_id][0]:>9}[{i}] {e}")
+                # for i, e in enumerate(memory_section.vec):
+                #    log.debugln(f"{convention.section[section_id][0]:>9}[{i}] {e}")
                 mod.mems = memory_section.vec
 
             elif section_id == convention.global_section:
                 global_section = GlobalSection.from_reader(io.BytesIO(data))
                 mod.sections["global"].append(global_section)
-                for i, e in enumerate(global_section.vec):
-                    log.debugln(f"{convention.section[section_id][0]:>9}[{i}] {e}")
+                # for i, e in enumerate(global_section.vec):
+                #    log.debugln(f"{convention.section[section_id][0]:>9}[{i}] {e}")
                 mod.globals = global_section.vec
 
             elif section_id == convention.export_section:
                 export_section = ExportSection.from_reader(io.BytesIO(data))
                 mod.sections["export"].append(export_section)
-                for i, e in enumerate(export_section.vec):
-                    log.debugln(f"{convention.section[section_id][0]:>9}[{i}] {e}")
+                # for i, e in enumerate(export_section.vec):
+                #    log.debugln(f"{convention.section[section_id][0]:>9}[{i}] {e}")
                 mod.exports = export_section.vec
 
             elif section_id == convention.start_section:
                 start_section = StartSection.from_reader(io.BytesIO(data))
                 mod.sections["start"].append(start_section)
-                log.debugln(
-                    f"{convention.section[section_id][0]:>12} {start_section.start_function}"
-                )
+                # log.debugln(
+                #    f"{convention.section[section_id][0]:>12} {start_section.start_function}"
+                # )
                 mod.start = start_section.start_function.funcidx
 
             elif section_id == convention.element_section:
                 element_section = ElementSection.from_reader(io.BytesIO(data))
                 mod.sections["element"].append(element_section)
-                for i, e in enumerate(element_section.vec):
-                    log.debugln(f"{convention.section[section_id][0]:>9}[{i}] {e}")
+                # for i, e in enumerate(element_section.vec):
+                #    log.debugln(f"{convention.section[section_id][0]:>9}[{i}] {e}")
                 mod.elem = element_section.vec
 
             elif section_id == convention.code_section:
@@ -1209,22 +1228,22 @@ class Module:
                             convention.loop,
                             convention.if_,
                         ]:
-                            log.debugln(
-                                f"{a} {convention.blocktype[e.immediate_arguments][0]}"
-                            )
+                            # log.debugln(
+                            #    f"{a} {convention.blocktype[e.immediate_arguments][0]}"
+                            # )
                             prefix += 2
                         elif e.code == convention.end:
                             prefix -= 2
                             a = f'           | {" " * prefix}{convention.opcodes[e.code][0]}'
-                            log.debugln(f"{a}")
-                        elif e.immediate_arguments is None:
-                            log.debugln(f"{a}")
-                        elif isinstance(e.immediate_arguments, list):
-                            log.debugln(
-                                f'{a} {" ".join([str(e) for e in e.immediate_arguments])}'
-                            )
-                        else:
-                            log.debugln(f"{a} {e.immediate_arguments}")
+                            # log.debugln(f"{a}")
+                        # elif e.immediate_arguments is None:
+                        #    log.debugln(f"{a}")
+                        # elif isinstance(e.immediate_arguments, list):
+                        #    log.debugln(
+                        #        f'{a} {" ".join([str(e) for e in e.immediate_arguments])}'
+                        #    )
+                        # else:
+                        #    log.debugln(f"{a} {e.immediate_arguments}")
 
                 num_imported_funcs = sum(
                     1
@@ -1233,9 +1252,9 @@ class Module:
                     )
                 )
                 for i, e in enumerate(code_section.vec):
-                    log.debugln(
-                        f"{convention.section[section_id][0]:>9}[{i}] func={num_imported_funcs+i} {e}"
-                    )
+                    # log.debugln(
+                    #    f"{convention.section[section_id][0]:>9}[{i}] func={num_imported_funcs+i} {e}"
+                    # )
                     printex(e.expr.data)
                     func = Function()
                     func.typeidx = function_section.vec[i]
@@ -1246,11 +1265,11 @@ class Module:
             elif section_id == convention.data_section:
                 data_section = DataSection.from_reader(io.BytesIO(data))
                 mod.sections["data"].append(data_section)
-                for i, e in enumerate(data_section.vec):
-                    log.debugln(f"{convention.section[section_id][0]:>9}[{i}] {e}")
+                # for i, e in enumerate(data_section.vec):
+                #    log.debugln(f"{convention.section[section_id][0]:>9}[{i}] {e}")
                 mod.data = data_section.vec
 
             else:
                 raise Exception("pywasm: invalid section id")
-        log.debugln("")
+        # log.debugln("")
         return mod
