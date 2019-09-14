@@ -31,6 +31,8 @@ class FunctionType:
 
     def to_writer(self, w: typing.BinaryIO):
         n = 0
+        w.write(bytes([0x60]))
+        n += 1
         n += common.write_bytes(w, self.args)
         n += common.write_bytes(w, self.rets)
         return n
@@ -385,19 +387,22 @@ class Code:
         return f'locals=[{", ".join([convention.valtype[i][0] for i in self.locals])}]'
 
     def to_writer(self, w: typing.BinaryIO):
-        n = 0
-        n += common.write_count(w, len(self._locals), maxbits=32)
-        n += common.write_count(w, len(self._locals), maxbits=32)
+        # serialize code fragment into a temporary buffer first
+        _w = io.BytesIO()
+        common.write_count(_w, len(self._locals), maxbits=32)
 
         for l in self._locals:
-            n += l.to_writer(w)
+            l.to_writer(_w)
 
-        n += self.expr.to_writer(w)
-        return n
+        self.expr.to_writer(_w)
+
+        # now write it out with a count prefix
+        return common.write_bytes(w, _w.getvalue(), maxbits=32)
 
     @classmethod
     def from_reader(cls, r: typing.BinaryIO):
         o = Code()
+
         n = common.read_count(r, 32)
         n = common.read_count(r, 32)
         for _ in range(n):
@@ -1099,7 +1104,8 @@ class Module:
                 w.write(b.getvalue())
                 n += _n
 
-                self.log.debug('wrote_section',
+                self.log.debug(
+                    "wrote_section",
                     section_id=section.CODE,
                     data=b.getvalue(),
                     length=_n,
